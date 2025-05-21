@@ -1,0 +1,30 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'base/forms.css' %}">
+  <title>Dodaj Produkt</title>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Dodaj Produkt</h2>
+    <form method="POST" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+
+      <h3>Informacje o produkcie</h3>
+      {{ product_form.non_field_errors }}
+      {{ product_form.as_p }}
+
+      <p class="no-margin">Złoty wzór na wielkość obrazu:</p> <b>Szerokość i dlugość płytki[mm]/2.5 * 10</b>
+
+      <h3>Obrazy testowe</h3>
+      {{ media_form.as_p }}
+
+      <button type="submit">Zapisz</button>
+    </form>
+  </div>
+</body>
+</html>

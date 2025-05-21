@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wybierz akcję</title>
+  <link rel="stylesheet" href="{% static 'base/style.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link 
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" 
+    rel="stylesheet">
+</head>
+<body>
+  <div class="card-container">
+    
+    <div class="card">
+      <h3>Dodaj nową rodzinę</h3>
+      <a href="{% url 'add_famili' %}">Przejdź</a>
+    </div>
+
+    <div class="card">
+      <h3>Dodaj nowy produkt</h3>
+      <a href="{% url 'add_product' %}">Przejdź</a>
+    </div>
+
+    <div class="card">
+      <h3>Dodaj nową kompozycję</h3>
+      <a href="{% url 'add_composition' %}">Przejdź</a>
+    </div>
+
+  </div>
+</body>
+</html>

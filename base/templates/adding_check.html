@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="check-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Zatwierdź</button>
+      </form>
+      
+      <div id="password-modal" style="display: none;">
+        <label for="password-input">Podaj hasło:</label>
+        <input type="password" id="password-input">
+        <button id="confirm-password-btn">Potwierdź</button>
+      </div>
+      
+      <div id="result-message"></div>
+<script>
+    document.getElementById('check-form').addEventListener('submit', function (e) {
+        e.preventDefault(); // Zatrzymaj domyślne wysyłanie
+        document.getElementById('password-modal').style.display = 'block';
+      });
+      
+      document.getElementById('confirm-password-btn').addEventListener('click', async function () {
+        const form = document.getElementById('check-form');
+        const formData = new FormData(form);
+        const password = document.getElementById('password-input').value;
+        formData.append('password', password);
+      
+        const response = await fetch("{% url 'save_check' %}", {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        });
+      
+        const result = await response.json();
+        if (result.status === 'success') {
+            window.location.href = "{% url 'base_page' %}";
+          } else {
+            document.getElementById('result-message').textContent = 'Błąd: ' + result.error;
+          }
+      
+        // Zamknij modal
+        document.getElementById('password-modal').style.display = 'none';
+      });
+      
+</script>
+</body>
+</html>

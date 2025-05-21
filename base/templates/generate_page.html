@@ -1,0 +1,275 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sprawdzanie Fazy</title>
+  <link rel="stylesheet" href="{% static 'base/generate.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- lewy pasek -->
+    <aside class="sidebar">
+      <div class="form-row">
+        <div class="field-group">
+          <label for="family">Rodzina:</label>
+          <select id="family">
+            <option value="">— wybierz —</option>
+            {% for fam in families %}
+              <option value="{{ fam.id }}">{{ fam.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      
+        <div class="field-group">
+          <label for="product">Produkt:</label>
+          <select id="product" disabled>
+            <option value="">— wybierz najpierw rodzinę —</option>
+          </select>
+        </div>
+      
+        <div class="field-group">
+          <label for="composition">Kompozycja:</label>
+          <select id="composition" disabled>
+            <option value="">— wybierz najpierw produkt —</option>
+          </select>
+        </div>
+      
+        <div class="field-group">
+          <label for="serial_number">Numer Seryjny</label>
+          <input type="text" id="serial_number" placeholder="np. ABC12345000001" />
+        </div>
+      
+        <div class="field-group">
+          <label style="visibility: hidden;">Przycisk</label>
+          <button id="generate_btn" disabled>Generuj</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- prawa część na panel -->
+    <main class="main-content">
+      <div id="tiles-container">
+        <p id="tiles-placeholder" class="placeholder-text">
+          Wybierz rodzinę, produkt, kompozycje następnie zeskanuj kod z panelu i naciśnij przycik generuj żeby sprawdzić poprzednią fazę płytek na panelu
+        </p>
+      </div>
+      <div id="output" style="margin-top:24px;"></div>
+    </main>
+  </div>
+
+  <p class="created-by">Created by Szymon Żaba</p>
+  
+  <script>
+    const $ = sel => document.querySelector(sel);
+  
+    let imageTrueGlobal = "";
+    let imageFalseGlobal = "";
+    let imageNoneGlobal = "";
+  
+    $('#family').addEventListener('change', async function () {
+      const fid = this.value;
+      $('#product').innerHTML = '<option>Ładuję…</option>';
+      $('#product').disabled = !fid;
+      $('#composition').innerHTML = '<option>— najpierw produkt —</option>';
+      $('#composition').disabled = true;
+      $('#generate_btn').disabled = true;
+  
+      if (!fid) {
+        $('#product').innerHTML = '<option>— wybierz rodzinę —</option>';
+        return;
+      }
+  
+      const res = await fetch(`{% url 'api_products' %}?family_id=${fid}`);
+      const data = await res.json();
+      let options = '<option value="">— wybierz —</option>';
+      data.products.forEach(p => {
+        options += `<option value="${p.id}">${p.name}</option>`;
+      });
+      $('#product').innerHTML = options;
+    });
+  
+    $('#product').addEventListener('change', async function () {
+      const pid = this.value;
+      $('#generate_btn').disabled = true;
+      $('#composition').disabled = true;
+      $('#composition').innerHTML = '<option>Ładuję…</option>';
+    
+      if (!pid) {
+        $('#composition').innerHTML = '<option>— wybierz produkt —</option>';
+        const placeholder = $('#tiles-placeholder');
+        if (placeholder) placeholder.style.display = 'block';
+        $('#tiles-container').style.backgroundColor = "transparent";
+        $('#tiles-container').style.boxShadow = "none";
+
+        document.querySelectorAll('.tile-wrapper').forEach(t => t.remove());
+        return;
+      }
+
+      const placeholder = $('#tiles-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+  
+      const res = await fetch(`{% url 'api_compositions' %}?product_id=${pid}`);
+      const data = await res.json();
+      let options = '<option value="">— wybierz —</option>';
+      data.compositions.forEach(c => {
+        options += `<option value="${c.id}">${c.name}</option>`;
+      });
+      $('#composition').innerHTML = options;
+      $('#composition').disabled = false;
+  
+      const dimRes = await fetch("{% url 'product_dimensions' %}?product_id=" + pid);
+      const dimData = await dimRes.json();
+      if (dimData.rows && dimData.cols && dimData.image_none && dimData.img_width && dimData.img_height) {
+        imageTrueGlobal = dimData.image_true;
+        imageFalseGlobal = dimData.image_false;
+        renderTiles(dimData.rows, dimData.cols, dimData.image_none, dimData.img_width, dimData.img_height);
+      }
+    });
+  
+    $('#composition').addEventListener('change', function () {
+      $('#generate_btn').disabled = !this.value;
+    });
+  
+    $('#generate_btn').addEventListener('click', async function () {
+      const compositionId = $('#composition').value;
+      const serialNumber = $('#serial_number').value.trim();
+      const output = $('#output');
+    
+      resetTiles(imageNoneGlobal);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    
+      const prep = await fetch("{% url 'prepare_serials' %}", {
+        method: 'POST',
+        body: JSON.stringify({
+          serial_number: serialNumber,
+          composition_id: compositionId
+        })
+      });
+    
+      const { serials } = await prep.json();
+    
+      for (let i = 0; i < serials.length; i++) {
+        const s = serials[i];
+        const resp = await fetch("{% url 'send_one_serial' %}", {
+          method: 'POST',
+          body: JSON.stringify({
+            serial: s,
+            composition_id: compositionId
+          })
+        });
+        
+        const result = await resp.json();
+        const p = document.createElement('p');
+    
+        if (result.status === 'success') {
+          setTileStatus(i, 'success');
+        } else {
+          const msg = result.description || result.error || 'Nieznany błąd';
+          setTileStatus(i, 'error', msg);
+        }
+    
+        output.appendChild(p);
+      }
+    
+      const done = document.createElement('p');
+      output.appendChild(done);
+    
+      $('#serial_number').value = "";
+      updateGenerateButtonState();
+    });
+  
+    function updateGenerateButtonState() {
+      const compositionOk = $('#composition').value !== "";
+      const serialOk = $('#serial_number').value.trim() !== "";
+      $('#generate_btn').disabled = !(compositionOk && serialOk);
+    }
+  
+    $('#composition').addEventListener('change', updateGenerateButtonState);
+    $('#serial_number').addEventListener('input', updateGenerateButtonState);
+  
+    function renderTiles(rows, cols, imageNone, imgWidth, imgHeight) {
+      imageNoneGlobal = imageNone;
+    
+      const placeholder = $('#tiles-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+    
+      const container = $('#tiles-container');
+      if (!container) {
+        console.error("Nie znaleziono #tiles-container");
+        return;
+      }
+    
+      container.innerHTML = '';
+      container.style.backgroundColor = "#91aeca";
+      container.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.05)";
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.gap = '4px';
+    
+      let index = 0;
+    
+      for (let r = 0; r < rows; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.style.display = 'flex';
+        rowDiv.style.gap = '4px';
+    
+        const tiles = [];
+    
+        for (let c = 0; c < cols; c++) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'tile-wrapper';
+          wrapper.style.width = `${imgWidth}px`;
+          wrapper.style.height = `${imgHeight}px`;
+          wrapper.setAttribute('data-index', index);
+          wrapper.style.backgroundImage = `url('${imageNone}')`;
+    
+          const overlay = document.createElement('div');
+          overlay.className = 'tile-overlay';
+          overlay.setAttribute('data-error-index', index);
+          overlay.textContent = '';
+    
+          wrapper.appendChild(overlay);
+          tiles.push(wrapper);
+          index++;
+        }
+    
+        if (r % 2 === 0) {
+          tiles.reverse();
+        }
+    
+        tiles.forEach(tile => rowDiv.appendChild(tile));
+        container.appendChild(rowDiv);
+      }
+    }
+  
+    function setTileStatus(index, status, message = "") {
+      const tile = document.querySelector(`.tile-wrapper[data-index='${index}']`);
+      const overlay = document.querySelector(`.tile-overlay[data-error-index='${index}']`);
+      if (!tile) return;
+    
+      if (status === 'success') {
+        tile.style.backgroundImage = `url('${imageTrueGlobal}')`;
+        if (overlay) overlay.textContent = "";
+      } else if (status === 'error') {
+        tile.style.backgroundImage = `url('${imageFalseGlobal}')`;
+        if (overlay) overlay.textContent = message;
+      }
+    }
+    function resetTiles(imageNone) {
+      document.querySelectorAll('.tile-wrapper').forEach(tile => {
+        tile.style.backgroundImage = `url('${imageNone}')`;
+      });
+      document.querySelectorAll('.tile-overlay').forEach(o => {
+        o.textContent = "";
+      });
+    }
+  </script>  
+</body>
+</html>
