@@ -37,7 +37,6 @@ Thumbs.db
 
 # Static & media
 staticfiles/
-static/
 media/
 
 # Coverage & testing

@@ -168,6 +168,10 @@ def get_product_dimensions(request):
     try:
         product = Product.objects.get(id=product_id)
         media = ProductMedia.objects.get(product=product)
+
+        comp = Composition.objects.filter(check_prev=product).first()
+        upper_snake = comp.upper_snake if comp else True
+        
         return JsonResponse({
             'rows': product.rows,
             'cols': product.cols,
@@ -175,7 +179,8 @@ def get_product_dimensions(request):
             'img_height': product.img_height,
             'image_none': media.image_none.url,
             'image_true': media.image_true.url,
-            'image_false': media.image_false.url
+            'image_false': media.image_false.url,
+            'upper_snake': upper_snake
         })
     except (Product.DoesNotExist, ProductMedia.DoesNotExist):
         return JsonResponse({'error': 'Brak danych'}, status=404)

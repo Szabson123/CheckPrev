@@ -127,7 +127,7 @@
       if (dimData.rows && dimData.cols && dimData.image_none && dimData.img_width && dimData.img_height) {
         imageTrueGlobal = dimData.image_true;
         imageFalseGlobal = dimData.image_false;
-        renderTiles(dimData.rows, dimData.cols, dimData.image_none, dimData.img_width, dimData.img_height);
+        renderTiles(dimData.rows, dimData.cols, dimData.image_none, dimData.img_width, dimData.img_height, dimData.upper_snake);
       }
     });
   
@@ -136,9 +136,14 @@
     });
   
     $('#generate_btn').addEventListener('click', async function () {
+
+      const generateBtn = $('#generate_btn');
+      generateBtn.disabled = true;
+
       const compositionId = $('#composition').value;
       const serialNumber = $('#serial_number').value.trim();
       const output = $('#output');
+      output.innerHTML = '';
     
       resetTiles(imageNoneGlobal);
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -192,7 +197,7 @@
     $('#composition').addEventListener('change', updateGenerateButtonState);
     $('#serial_number').addEventListener('input', updateGenerateButtonState);
   
-    function renderTiles(rows, cols, imageNone, imgWidth, imgHeight) {
+    function renderTiles(rows, cols, imageNone, imgWidth, imgHeight, upperSnake = true) {
       imageNoneGlobal = imageNone;
     
       const placeholder = $('#tiles-placeholder');
@@ -210,7 +215,7 @@
       container.style.backgroundColor = "#91aeca";
       container.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.05)";
       container.style.display = 'flex';
-      container.style.flexDirection = 'column';
+      container.style.flexDirection = upperSnake ? 'column' : 'column-reverse';
       container.style.gap = '4px';
     
       let index = 0;
@@ -240,10 +245,11 @@
           index++;
         }
     
-        if (r % 2 === 0) {
+        const logicIndex = upperSnake ? r : (rows - r - 1);
+        if (logicIndex % 2 === 0) {
           tiles.reverse();
         }
-    
+        
         tiles.forEach(tile => rowDiv.appendChild(tile));
         container.appendChild(rowDiv);
       }
