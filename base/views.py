@@ -7,7 +7,7 @@ import requests
 from .models import Famili, Product, Composition, ProductMedia
 from .forms import FamiliForm, ProductForm, CompositionForm, ProductMediaForm
 import json
-
+from django.utils.timezone import now
 
 def add_famili(request):
     if request.method == 'POST':
@@ -126,10 +126,32 @@ def prepare_serials(request):
         serials  = crate_new_boards(prepared_serial, how_many)
 
         return JsonResponse({'serials': serials})
+    
+    
+def set_phase_if_exist(comp, serial):
+    if not comp.set_phase:
+        return {"status": "skipped", "reason": "set_phase is empty"}
+
+    insert_data = {
+        "testName": comp.set_phase,
+        "assemblyFormId": 0,
+        "idParts": comp.name,
+        "msn": serial,
+        "testDatetime": now().isoformat(),
+        "result": 1
+    }
+
+    try:
+        insert_url = 'http://10.140.13.11:5556/api/insertdata'
+        response = requests.post(insert_url, json=insert_data)
+        response.raise_for_status()
+        return {"status": "sent", "response": response.json()}
+    except requests.RequestException as e:
+        return {"status": "error", "error": str(e)}
 
 @csrf_exempt
 def send_one_serial(request):
-    """Ajax: wysyła pojedynczy serial do API."""
+    """Ajax: wysyła pojedynczy serial do API i zawsze insertuje dane."""
     if request.method == 'POST':
         data = json.loads(request.body)
         serial = data.get('serial')
@@ -149,12 +171,15 @@ def send_one_serial(request):
             response = requests.post(apiURL, json=json_data)
             response.raise_for_status()
             result_data = response.json()
+            phase_result = set_phase_if_exist(comp, serial)
             return JsonResponse({
                 'status': 'success' if result_data.get('returnCode') == 0 else 'error',
                 'serial': serial,
                 'code': result_data.get('returnCode'),
                 'description': result_data.get('returnCodeDescription'),
+                'phase_action': phase_result
             })
+
         except requests.RequestException as e:
             return JsonResponse({
                 'status': 'request_failed',

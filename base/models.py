@@ -32,6 +32,7 @@ class Composition(models.Model):
     is_change_down_flag = models.CharField(choices=Flags, default='nothing', max_length=255)
     phase = models.CharField(max_length=255)
     upper_snake = models.BooleanField(default=True)
+    set_phase = models.CharField(max_length=255, null=True, blank=True)
     
     def __str__(self) -> str:
         return self.name

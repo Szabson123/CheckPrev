@@ -6,9 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sprawdzanie Fazy</title>
   <link rel="stylesheet" href="{% static 'base/generate.css' %}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app-container">
@@ -186,6 +183,7 @@
     
       $('#serial_number').value = "";
       updateGenerateButtonState();
+      $('#serial_number').focus();
     });
   
     function updateGenerateButtonState() {
@@ -215,7 +213,7 @@
       container.style.backgroundColor = "#91aeca";
       container.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.05)";
       container.style.display = 'flex';
-      container.style.flexDirection = upperSnake ? 'column' : 'column-reverse';
+      container.style.flexDirection = 'column';
       container.style.gap = '4px';
     
       let index = 0;
@@ -245,11 +243,11 @@
           index++;
         }
     
-        const logicIndex = upperSnake ? r : (rows - r - 1);
-        if (logicIndex % 2 === 0) {
+        const shouldReverse = upperSnake ? r % 2 === 0 : r % 2 === 1;
+        if (shouldReverse) {
           tiles.reverse();
         }
-        
+    
         tiles.forEach(tile => rowDiv.appendChild(tile));
         container.appendChild(rowDiv);
       }
@@ -276,6 +274,13 @@
         o.textContent = "";
       });
     }
+    document.addEventListener('keydown', function(e) {
+      const generateBtn = document.getElementById('generate_btn');
+      if (e.key === 'Enter' && !generateBtn.disabled) {
+        e.preventDefault();
+        generateBtn.click();
+      }
+    });
   </script>  
 </body>
 </html>
