@@ -40,6 +40,13 @@
           <label for="serial_number">Numer Seryjny</label>
           <input type="text" id="serial_number" placeholder="np. ABC12345000001" />
         </div>
+
+        <div class="field-group">
+          <label>
+            <input type="checkbox" id="use_set_phase" checked>
+            Ustaw fazę depanelizacji
+          </label>
+        </div>
       
         <div class="field-group">
           <label style="visibility: hidden;">Przycisk</label>
@@ -154,6 +161,8 @@
       });
     
       const { serials } = await prep.json();
+
+      const useSetPhase = $('#use_set_phase').checked;
     
       for (let i = 0; i < serials.length; i++) {
         const s = serials[i];
@@ -161,7 +170,8 @@
           method: 'POST',
           body: JSON.stringify({
             serial: s,
-            composition_id: compositionId
+            composition_id: compositionId,
+            use_set_phase: useSetPhase
           })
         });
         

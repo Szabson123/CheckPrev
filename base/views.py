@@ -14,7 +14,7 @@ def add_famili(request):
         form = FamiliForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('base_page')
+            return redirect('choose_form')
     else:
         form = FamiliForm()
     return render(request, 'forms/add_family.html', {'form': form})
@@ -30,7 +30,7 @@ def add_product(request):
             media = media_form.save(commit=False)
             media.product = product
             media.save()
-            return redirect('base_page')
+            return redirect('choose_form')
 
     else:
         product_form = ProductForm()
@@ -47,7 +47,7 @@ def add_composition(request):
         form = CompositionForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('base_page')
+            return redirect('choose_form')
     else:
         form = CompositionForm()
     return render(request, 'forms/add_comp.html', {'form': form})
@@ -156,6 +156,7 @@ def send_one_serial(request):
         data = json.loads(request.body)
         serial = data.get('serial')
         composition_id = data.get('composition_id')
+        use_set_phase = data.get('use_set_phase', True)
 
         comp = get_object_or_404(Composition, id=composition_id)
         apiURL = 'http://10.140.13.11:5556/api/checkprevphase'
@@ -171,7 +172,11 @@ def send_one_serial(request):
             response = requests.post(apiURL, json=json_data)
             response.raise_for_status()
             result_data = response.json()
-            phase_result = set_phase_if_exist(comp, serial)
+            if use_set_phase:
+                phase_result = set_phase_if_exist(comp, serial)
+            else:
+                phase_result = {"status": "skipped", "reason": "manual skip"}
+                
             return JsonResponse({
                 'status': 'success' if result_data.get('returnCode') == 0 else 'error',
                 'serial': serial,
