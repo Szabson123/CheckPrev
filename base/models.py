@@ -6,8 +6,16 @@ Flags = [
     ('nothing', 'Nothing'),
 ]
 
+
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self) -> str:
+        return self.name
     
+
 class Famili(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255)
     
     def __str__(self) -> str:

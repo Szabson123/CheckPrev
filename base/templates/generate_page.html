@@ -12,16 +12,27 @@
     <!-- lewy pasek -->
     <aside class="sidebar">
       <div class="form-row">
+
+        <!-- KATEGORIA -->
         <div class="field-group">
-          <label for="family">Rodzina:</label>
-          <select id="family">
+          <label for="categorie">Kategoria:</label>
+          <select id="categorie">
             <option value="">— wybierz —</option>
-            {% for fam in families %}
-              <option value="{{ fam.id }}">{{ fam.name }}</option>
+            {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
             {% endfor %}
           </select>
         </div>
-      
+
+        <!-- RODZINA -->
+        <div class="field-group">
+          <label for="family">Rodzina:</label>
+          <select id="family" disabled>
+            <option value="">— wybierz najpierw kategorię —</option>
+          </select>
+        </div>
+
+        <!-- PRODUKT -->
         <div class="field-group">
           <label for="product">Produkt:</label>
           <select id="product" disabled>
@@ -29,6 +40,7 @@
           </select>
         </div>
       
+        <!-- KOMPOZYCJA -->
         <div class="field-group">
           <label for="composition">Kompozycja:</label>
           <select id="composition" disabled>
@@ -36,6 +48,7 @@
           </select>
         </div>
       
+        <!-- NUMER SERYJNY -->
         <div class="field-group">
           <label for="serial_number">Numer Seryjny</label>
           <input type="text" id="serial_number" placeholder="np. ABC12345000001" />
@@ -44,7 +57,7 @@
         <div class="field-group">
           <label>
             <input type="checkbox" id="use_set_phase" checked>
-            Ustaw fazę depanelizacji
+            Ustaw fazę <span id="category-phase">-</span>
           </label>
         </div>
       
@@ -55,11 +68,11 @@
       </div>
     </aside>
 
-    <!-- prawa część na panel -->
+    <!-- prawa część -->
     <main class="main-content">
       <div id="tiles-container">
         <p id="tiles-placeholder" class="placeholder-text">
-          Wybierz rodzinę, produkt, kompozycje następnie zeskanuj kod z panelu i naciśnij przycik generuj żeby sprawdzić poprzednią fazę płytek na panelu
+          Wybierz kategorię, rodzinę, produkt, kompozycję, następnie zeskanuj kod z panelu i naciśnij „Generuj”, żeby sprawdzić poprzednią fazę płytek.
         </p>
       </div>
       <div id="output" style="margin-top:24px;"></div>
@@ -70,11 +83,43 @@
   
   <script>
     const $ = sel => document.querySelector(sel);
-  
+
     let imageTrueGlobal = "";
     let imageFalseGlobal = "";
     let imageNoneGlobal = "";
-  
+
+    // KATEGORIA → RODZINA
+    $('#categorie').addEventListener('change', async function () {
+      const cid = this.value;
+
+      const selectedOption = this.options[this.selectedIndex];
+      const catName = selectedOption && selectedOption.value ? selectedOption.textContent : "depanelizacji";
+      $('#category-phase').textContent = catName;
+
+      $('#family').innerHTML = '<option>Ładuję…</option>';
+      $('#family').disabled = !cid;
+      $('#product').innerHTML = '<option>— wybierz rodzinę —</option>';
+      $('#product').disabled = true;
+      $('#composition').innerHTML = '<option>— wybierz produkt —</option>';
+      $('#composition').disabled = true;
+      $('#generate_btn').disabled = true;
+
+      if (!cid) {
+        $('#family').innerHTML = '<option>— wybierz kategorię —</option>';
+        return;
+      }
+
+      const res = await fetch(`{% url 'api_families' %}?category_id=${cid}`);
+      const data = await res.json();
+      let options = '<option value="">— wybierz —</option>';
+      data.famili.forEach(f => {
+        options += `<option value="${f.id}">${f.name}</option>`;
+      });
+      $('#family').innerHTML = options;
+      $('#family').disabled = false;
+    });
+
+    // RODZINA → PRODUKT
     $('#family').addEventListener('change', async function () {
       const fid = this.value;
       $('#product').innerHTML = '<option>Ładuję…</option>';
@@ -82,12 +127,12 @@
       $('#composition').innerHTML = '<option>— najpierw produkt —</option>';
       $('#composition').disabled = true;
       $('#generate_btn').disabled = true;
-  
+
       if (!fid) {
         $('#product').innerHTML = '<option>— wybierz rodzinę —</option>';
         return;
       }
-  
+
       const res = await fetch(`{% url 'api_products' %}?family_id=${fid}`);
       const data = await res.json();
       let options = '<option value="">— wybierz —</option>';
@@ -95,28 +140,24 @@
         options += `<option value="${p.id}">${p.name}</option>`;
       });
       $('#product').innerHTML = options;
+      $('#product').disabled = false;
     });
-  
+
+    // PRODUKT → KOMPOZYCJE + WYMIARY
     $('#product').addEventListener('change', async function () {
       const pid = this.value;
       $('#generate_btn').disabled = true;
       $('#composition').disabled = true;
       $('#composition').innerHTML = '<option>Ładuję…</option>';
-    
+
       if (!pid) {
         $('#composition').innerHTML = '<option>— wybierz produkt —</option>';
-        const placeholder = $('#tiles-placeholder');
-        if (placeholder) placeholder.style.display = 'block';
         $('#tiles-container').style.backgroundColor = "transparent";
         $('#tiles-container').style.boxShadow = "none";
-
         document.querySelectorAll('.tile-wrapper').forEach(t => t.remove());
         return;
       }
 
-      const placeholder = $('#tiles-placeholder');
-      if (placeholder) placeholder.style.display = 'none';
-  
       const res = await fetch(`{% url 'api_compositions' %}?product_id=${pid}`);
       const data = await res.json();
       let options = '<option value="">— wybierz —</option>';
@@ -125,7 +166,7 @@
       });
       $('#composition').innerHTML = options;
       $('#composition').disabled = false;
-  
+
       const dimRes = await fetch("{% url 'product_dimensions' %}?product_id=" + pid);
       const dimData = await dimRes.json();
       if (dimData.rows && dimData.cols && dimData.image_none && dimData.img_width && dimData.img_height) {
@@ -134,13 +175,13 @@
         renderTiles(dimData.rows, dimData.cols, dimData.image_none, dimData.img_width, dimData.img_height, dimData.upper_snake);
       }
     });
-  
     $('#composition').addEventListener('change', function () {
-      $('#generate_btn').disabled = !this.value;
+      updateGenerateButtonState();
     });
-  
-    $('#generate_btn').addEventListener('click', async function () {
 
+    $('#serial_number').addEventListener('input', updateGenerateButtonState);
+
+    $('#generate_btn').addEventListener('click', async function () {
       const generateBtn = $('#generate_btn');
       generateBtn.disabled = true;
 
@@ -148,10 +189,10 @@
       const serialNumber = $('#serial_number').value.trim();
       const output = $('#output');
       output.innerHTML = '';
-    
+
       resetTiles(imageNoneGlobal);
       await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
       const prep = await fetch("{% url 'prepare_serials' %}", {
         method: 'POST',
         body: JSON.stringify({
@@ -159,11 +200,10 @@
           composition_id: compositionId
         })
       });
-    
-      const { serials } = await prep.json();
 
+      const { serials } = await prep.json();
       const useSetPhase = $('#use_set_phase').checked;
-    
+
       for (let i = 0; i < serials.length; i++) {
         const s = serials[i];
         const resp = await fetch("{% url 'send_one_serial' %}", {
@@ -174,67 +214,44 @@
             use_set_phase: useSetPhase
           })
         });
-        
+
         const result = await resp.json();
-        const p = document.createElement('p');
-    
         if (result.status === 'success') {
           setTileStatus(i, 'success');
         } else {
           const msg = result.description || result.error || 'Nieznany błąd';
           setTileStatus(i, 'error', msg);
         }
-    
-        output.appendChild(p);
       }
-    
-      const done = document.createElement('p');
-      output.appendChild(done);
-    
+
       $('#serial_number').value = "";
       updateGenerateButtonState();
       $('#serial_number').focus();
     });
-  
+
+    // FUNKCJE POMOCNICZE
     function updateGenerateButtonState() {
       const compositionOk = $('#composition').value !== "";
       const serialOk = $('#serial_number').value.trim() !== "";
       $('#generate_btn').disabled = !(compositionOk && serialOk);
     }
-  
-    $('#composition').addEventListener('change', updateGenerateButtonState);
-    $('#serial_number').addEventListener('input', updateGenerateButtonState);
-  
+
     function renderTiles(rows, cols, imageNone, imgWidth, imgHeight, upperSnake = true) {
       imageNoneGlobal = imageNone;
-    
-      const placeholder = $('#tiles-placeholder');
-      if (placeholder) {
-        placeholder.style.display = 'none';
-      }
-    
       const container = $('#tiles-container');
-      if (!container) {
-        console.error("Nie znaleziono #tiles-container");
-        return;
-      }
-    
       container.innerHTML = '';
       container.style.backgroundColor = "#91aeca";
       container.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.05)";
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
       container.style.gap = '4px';
-    
+
       let index = 0;
-    
       for (let r = 0; r < rows; r++) {
         const rowDiv = document.createElement('div');
         rowDiv.style.display = 'flex';
         rowDiv.style.gap = '4px';
-    
         const tiles = [];
-    
         for (let c = 0; c < cols; c++) {
           const wrapper = document.createElement('div');
           wrapper.className = 'tile-wrapper';
@@ -242,40 +259,33 @@
           wrapper.style.height = `${imgHeight}px`;
           wrapper.setAttribute('data-index', index);
           wrapper.style.backgroundImage = `url('${imageNone}')`;
-    
           const overlay = document.createElement('div');
           overlay.className = 'tile-overlay';
           overlay.setAttribute('data-error-index', index);
-          overlay.textContent = '';
-    
           wrapper.appendChild(overlay);
           tiles.push(wrapper);
           index++;
         }
-    
         const shouldReverse = upperSnake ? r % 2 === 0 : r % 2 === 1;
-        if (shouldReverse) {
-          tiles.reverse();
-        }
-    
+        if (shouldReverse) tiles.reverse();
         tiles.forEach(tile => rowDiv.appendChild(tile));
         container.appendChild(rowDiv);
       }
     }
-  
+
     function setTileStatus(index, status, message = "") {
       const tile = document.querySelector(`.tile-wrapper[data-index='${index}']`);
       const overlay = document.querySelector(`.tile-overlay[data-error-index='${index}']`);
       if (!tile) return;
-    
       if (status === 'success') {
         tile.style.backgroundImage = `url('${imageTrueGlobal}')`;
         if (overlay) overlay.textContent = "";
-      } else if (status === 'error') {
+      } else {
         tile.style.backgroundImage = `url('${imageFalseGlobal}')`;
         if (overlay) overlay.textContent = message;
       }
     }
+
     function resetTiles(imageNone) {
       document.querySelectorAll('.tile-wrapper').forEach(tile => {
         tile.style.backgroundImage = `url('${imageNone}')`;
@@ -284,13 +294,14 @@
         o.textContent = "";
       });
     }
+
     document.addEventListener('keydown', function(e) {
-      const generateBtn = document.getElementById('generate_btn');
+      const generateBtn = $('#generate_btn');
       if (e.key === 'Enter' && !generateBtn.disabled) {
         e.preventDefault();
         generateBtn.click();
       }
     });
-  </script>  
+  </script>
 </body>
 </html>

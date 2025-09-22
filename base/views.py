@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 import requests
 
-from .models import Famili, Product, Composition, ProductMedia
+from .models import Famili, Product, Composition, ProductMedia, Category
 from .forms import FamiliForm, ProductForm, CompositionForm, ProductMediaForm
 import json
 from django.utils.timezone import now
@@ -66,8 +66,15 @@ def base_page(request):
 
         
 def generate_page(request):
-    families = Famili.objects.all()
-    return render(request, 'generate_page.html', {'families': families})
+    categories = Category.objects.all()
+    return render(request, 'generate_page.html', {'categories': categories})
+
+
+def family_for_categories(request):
+    """Ajax: lista rodziny dla danej kategori."""
+    category_id = request.GET.get('category_id')
+    famili = Famili.objects.filter(category_id=category_id).values('id','name')
+    return JsonResponse({'famili': list(famili)})
 
 
 def products_for_family(request):

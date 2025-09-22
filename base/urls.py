@@ -16,8 +16,9 @@ urlpatterns = [
     path('dodaj-familie/', views.add_famili, name='add_famili'),
     path('dodaj-produkt/', views.add_product, name='add_product'),
     path('dodaj-kompozycje/', views.add_composition, name='add_composition'),
-    
-    path('api/products/',   views.products_for_family, name='api_products'),
+
+    path('api/families/', views.family_for_categories, name='api_families'),    
+    path('api/products/', views.products_for_family, name='api_products'),
     path('api/compositions/', views.compositions_for_product, name='api_compositions'),
     path('api/product-dimensions/', views.get_product_dimensions, name='product_dimensions'),
 ]
