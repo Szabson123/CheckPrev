@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-
+from django.utils import timezone
 import requests
 
 from .models import Famili, Product, Composition, ProductMedia, Category
@@ -144,7 +144,7 @@ def set_phase_if_exist(comp, serial):
         "assemblyFormId": 0,
         "idParts": comp.name,
         "msn": serial,
-        "testDatetime": now().isoformat(),
+        "testDatetime": timezone.localtime(timezone.now()).isoformat(),
         "result": 1
     }
 
