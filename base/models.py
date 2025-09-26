@@ -19,7 +19,7 @@ class Famili(models.Model):
     name = models.CharField(max_length=255)
     
     def __str__(self) -> str:
-        return self.name
+        return f'{self.name} {self.category.name}'
     
 
 class Product(models.Model):
