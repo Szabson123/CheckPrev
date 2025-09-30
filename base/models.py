@@ -31,7 +31,7 @@ class Product(models.Model):
     img_height = models.IntegerField()
     
     def __str__(self) -> str:
-        return self.name
+        return f'{self.name} {self.check_prev.category.name}'
     
 
 class Composition(models.Model):
@@ -43,7 +43,7 @@ class Composition(models.Model):
     set_phase = models.CharField(max_length=255, null=True, blank=True)
     
     def __str__(self) -> str:
-        return self.name
+        return f'{self.name} {self.check_prev.check_prev.category.name}'
     
     
 class ProductMedia(models.Model):
