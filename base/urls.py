@@ -7,6 +7,7 @@ urlpatterns = [
     path('generate/', views.generate_page, name='generate_page'),
     path('base/', views.base_page, name='base_page'),
     path('choose_form/', views.choose_form, name='choose_form'),
+    path('part_numbers/', views.part_numbers, name='part_numbers'),
     
     # Function_to_generate
     path('prepare-serials/', views.prepare_serials, name='prepare_serials'),

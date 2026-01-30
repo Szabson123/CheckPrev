@@ -57,6 +57,11 @@ def choose_form(request):
     return render(request, 'choose_form.html')
 
 
+def part_numbers(request):
+    return render(request, 'part_numbers.html')
+
+
+
 def redi(request):
     return redirect('/generate')
 
